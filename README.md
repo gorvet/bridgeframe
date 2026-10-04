@@ -76,8 +76,8 @@ La prueba crea y elimina sus contenidos y consumidores temporales. Comprueba los
 
 ## Requisitos
 
-- WordPress 5.5+
-- PHP 7.1+
+- WordPress 6.9.4+
+- PHP 8.1+
 - ACF opcional
 
 ## Licencia

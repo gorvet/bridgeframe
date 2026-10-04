@@ -1,9 +1,9 @@
 === Bridgeframe ===
 Contributors: juankdegorvet
 Tags: headless, REST API, frontend, token, gframe
-Requires at least: 5.5
+Requires at least: 6.9.4
 Tested up to: 6.9.4
-Requires PHP: 7.1
+Requires PHP: 8.1
 Stable tag: 2.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html

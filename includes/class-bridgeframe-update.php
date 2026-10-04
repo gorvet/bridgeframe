@@ -29,9 +29,9 @@ class Bridgeframe_Update {
     'package'       => $info->download_url,
 
     // Para compatibilidad en update-core.php
-    'tested'        => $info->tested ?? '6.8.2',
-    'requires'      => $info->requires ?? '5.0',
-    'requires_php'  => $info->requires_php ?? '7.4',
+    'tested'        => $info->tested ?? '6.9.4',
+    'requires'      => $info->requires ?? '6.9.4',
+    'requires_php'  => $info->requires_php ?? '8.1',
 
     // Para ícono en update-core.php
     'icons' => ['default' => 'https://repo.gorvet.com/updates/bridgeframe/icon.png'],
@@ -65,8 +65,9 @@ class Bridgeframe_Update {
         'slug'           => $info->slug ?? 'bridgeframe',
         'version'        => $info->version,
         'author'         => $info->author ?? 'Juank de Gorvet',
-        'requires'       => $info->requires ?? '5.0',
-        'tested'         => $info->tested ?? '6.8.2',
+        'requires'       => $info->requires ?? '6.9.4',
+        'requires_php'   => $info->requires_php ?? '8.1',
+        'tested'         => $info->tested ?? '6.9.4',
         'last_updated'   => $info->last_updated ?? date('Y-m-d'),
         'sections'       => (array)($info->sections ?? ['description' => 'Sin descripción.']),
         'homepage'       => $info->homepage ?? '',
