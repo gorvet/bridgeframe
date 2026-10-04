@@ -1,30 +1,43 @@
 # Documentación de Bridgeframe
 
-Esta guía describe la API v1 del plugin 2.0.2. El cliente actual de GFrame requiere API v2; consulta [la revisión de compatibilidad](docs/CONTRATO-GFRAME.md).
+Esta guía describe la API v2 del plugin 2.1.0, compatible con el contrato 2.0 del cliente de GFrame. Consulta [el contrato y la migración](docs/CONTRATO-GFRAME.md).
 
 ## Base de la API
 
 ```text
-https://tusitio.com/wp-json/bridgeframe/v1
+https://tusitio.com/wp-json/bridgeframe/v2
 ```
 
 ## Autenticación
 
 Todas las rutas requieren token.
 
-Opciones:
-
-### Query string
-
-```text
-?token=TU_TOKEN
-```
-
-### Header recomendado
+Usa exclusivamente la cabecera Bearer. El parámetro `token` de las URL no autentica solicitudes v2.
 
 ```http
 Authorization: Bearer TU_TOKEN
+X-BridgeFrame-Contract: 2.0
 ```
+
+Crea credenciales en `Ajustes > Bridgeframe`, con nombre, permisos y caducidad. Solo se muestran al crearlas o rotarlas; se almacenan mediante SHA-256. Una rotación invalida la credencial anterior y una revocación bloquea al consumidor.
+
+- `content.read`: contenido público, listados, términos, menús y esquema.
+- `private.read`: permiso adicional para `private=true`; también exige `content.read`.
+- `comments.write`: crear comentarios.
+- `comments.moderate`: consultar y moderar comentarios.
+
+Las respuestas usan `status`, `code`, `data` y `meta`. Los ejemplos de datos de esta guía corresponden al interior de `data`:
+
+```json
+{
+  "status": "success",
+  "code": "content_loaded",
+  "data": { "id": 7, "html": "<p>Contenido</p>" },
+  "meta": { "contract_version": "2.0", "request_id": "identificador-unico" }
+}
+```
+
+Los errores usan el mismo sobre, con `status=error` y `data.message`, conservando el estado HTTP. Credenciales inválidas devuelven 401; permisos insuficientes, 403; recursos ausentes, 404; exceso de consumo, 429 con `Retry-After`. Si se envía `X-BridgeFrame-Contract`, debe ser `2.0`.
 
 ## Endpoints
 
@@ -53,7 +66,7 @@ Ejemplo:
 
 ```bash
 curl -H "Authorization: Bearer TU_TOKEN" \
-"https://tusitio.com/wp-json/bridgeframe/v1/html?slug=mi-articulo&type=post&fields=id,title,html,image,acf,taxonomies"
+"https://tusitio.com/wp-json/bridgeframe/v2/html?slug=mi-articulo&type=post&fields=id,title,html,image,acf,taxonomies"
 ```
 
 ### `GET /list`
@@ -93,17 +106,17 @@ Ejemplos:
 
 ```bash
 curl -H "Authorization: Bearer TU_TOKEN" \
-"https://tusitio.com/wp-json/bridgeframe/v1/list?type=post&limit=6&page=1&fields=id,title,slug,excerpt,image,date"
+"https://tusitio.com/wp-json/bridgeframe/v2/list?type=post&limit=6&page=1&fields=id,title,slug,excerpt,image,date"
 ```
 
 ```bash
 curl -H "Authorization: Bearer TU_TOKEN" \
-"https://tusitio.com/wp-json/bridgeframe/v1/list?type=post&taxonomy=category&term=noticias&limit=10"
+"https://tusitio.com/wp-json/bridgeframe/v2/list?type=post&taxonomy=category&term=noticias&limit=10"
 ```
 
 ```bash
 curl -H "Authorization: Bearer TU_TOKEN" \
-"https://tusitio.com/wp-json/bridgeframe/v1/list?type=proyecto&meta_key=destacado&meta_value=1"
+"https://tusitio.com/wp-json/bridgeframe/v2/list?type=proyecto&meta_key=destacado&meta_value=1"
 ```
 
 Respuesta:
@@ -140,7 +153,7 @@ Ejemplo:
 
 ```bash
 curl -H "Authorization: Bearer TU_TOKEN" \
-"https://tusitio.com/wp-json/bridgeframe/v1/terms?taxonomy=category&limit=20&with_total=true"
+"https://tusitio.com/wp-json/bridgeframe/v2/terms?taxonomy=category&limit=20&with_total=true"
 ```
 
 ### `GET /menu`
@@ -163,17 +176,17 @@ Ejemplos:
 
 ```bash
 curl -H "Authorization: Bearer TU_TOKEN" \
-"https://tusitio.com/wp-json/bridgeframe/v1/menu?location=primary"
+"https://tusitio.com/wp-json/bridgeframe/v2/menu?location=primary"
 ```
 
 ```bash
 curl -H "Authorization: Bearer TU_TOKEN" \
-"https://tusitio.com/wp-json/bridgeframe/v1/menu?slug=menu-principal"
+"https://tusitio.com/wp-json/bridgeframe/v2/menu?slug=menu-principal"
 ```
 
 ```bash
 curl -H "Authorization: Bearer TU_TOKEN" \
-"https://tusitio.com/wp-json/bridgeframe/v1/menu?id=12&flat=true"
+"https://tusitio.com/wp-json/bridgeframe/v2/menu?id=12&flat=true"
 ```
 
 Respuesta:
@@ -228,7 +241,7 @@ Ejemplo:
 
 ```bash
 curl -H "Authorization: Bearer TU_TOKEN" \
-"https://tusitio.com/wp-json/bridgeframe/v1/schema"
+"https://tusitio.com/wp-json/bridgeframe/v2/schema"
 ```
 
 ## Caché
@@ -258,7 +271,7 @@ Todos los modos exigen token. Si el consumo se hace directo desde navegador, usa
 
 ## ACF
 
-Bridgeframe expone ACF solo en lectura. Los endpoints de comentarios admiten escritura y moderación con el mismo token compartido.
+Bridgeframe expone ACF solo en lectura. Los endpoints de comentarios usan permisos independientes.
 
 Soporta:
 
@@ -282,7 +295,19 @@ O solo algunos:
 fields=acf&acf_fields=hero,banner,galeria
 ```
 
-## Recomendaciones
+## Comentarios
+
+- `GET /comments`: exige `comments.moderate`; admite `post_id`, `slug`, `type`, `status`, `limit`, `page`, `s`, `parent`, `orderby` y `order`.
+- `POST /comments`: exige `comments.write`; recibe `post_id` o `slug`, `author_name`, `author_email`, `content` y, opcionalmente, `author_url`, `parent` y `user_id`. El contenido debe estar publicado y admitir comentarios. Devuelve HTTP 201; WordPress decide si queda aprobado o pendiente.
+- `POST /comments/{id}/moderate`: exige `comments.moderate`; recibe `action=approve|hold|reject|trash|spam|delete`.
+
+## Consumo y auditoría
+
+La API v2 admite 120 solicitudes autorizadas por consumidor y minuto. Superar el límite devuelve HTTP 429 y `Retry-After`. La autorización se evalúa antes de devolver datos de caché. Cada respuesta genera un `request_id` propio y usa `Cache-Control: no-store` para impedir que un intermediario comparta respuestas autenticadas.
+
+Las solicitudes v2 se registran en el log de PHP con el prefijo `[Bridgeframe]`, consumidor, ruta, código, fecha e identificador de solicitud. No se registran tokens ni cuerpos. El hook `bridgeframe_audit` permite enviar esos metadatos a otro sistema.
+
+## Recomendaciones de uso
 
 - Usa `Authorization: Bearer`.
 - Limita `fields` para no traer datos de más.

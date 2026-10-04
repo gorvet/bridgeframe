@@ -7,6 +7,7 @@ class Bridgeframe_Loader {
         require_once BRIDGEFRAME_DIR . 'includes/class-bridgeframe-auth.php';
         require_once BRIDGEFRAME_DIR . 'includes/class-bridgeframe-content.php';
         require_once BRIDGEFRAME_DIR . 'includes/class-bridgeframe-api.php';
+        require_once BRIDGEFRAME_DIR . 'includes/class-bridgeframe-v2.php';
         require_once BRIDGEFRAME_DIR . 'includes/class-bridgeframe-headless.php';
         require_once BRIDGEFRAME_DIR . 'includes/class-bridgeframe-settings.php';
         require_once BRIDGEFRAME_DIR . 'includes/class-bridgeframe-update.php';
@@ -15,6 +16,8 @@ class Bridgeframe_Loader {
 
         // Iniciar API
         add_action('rest_api_init', ['Bridgeframe_API', 'register_routes']);
+        add_action('rest_api_init', ['Bridgeframe_V2', 'register_routes']);
+        add_filter('rest_post_dispatch', ['Bridgeframe_V2', 'envelope'], 20, 3);
         add_filter('rest_pre_serve_request', ['Bridgeframe_API', 'send_cors_headers'], 20, 4);
         add_action('save_post', ['Bridgeframe_API', 'clear_cache']);
         add_action('deleted_post', ['Bridgeframe_API', 'clear_cache']);

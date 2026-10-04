@@ -59,11 +59,16 @@ class Bridgeframe_API {
     }
 
     public static function send_cors_headers($served, $result, $request, $server) {
-        if (!$request instanceof WP_REST_Request || strpos($request->get_route(), '/bridgeframe/v1/') !== 0) {
+        if (!$request instanceof WP_REST_Request || !preg_match('#^/bridgeframe/v[12]/#', $request->get_route())) {
             return $served;
         }
 
         $mode = Bridgeframe_Utils::get_cors_mode();
+        if (strpos($request->get_route(), '/bridgeframe/v2/') === 0) {
+            foreach (['Access-Control-Allow-Origin', 'Access-Control-Allow-Methods', 'Access-Control-Allow-Headers', 'Access-Control-Allow-Credentials', 'Access-Control-Max-Age'] as $cors_header) {
+                header_remove($cors_header);
+            }
+        }
         if ($mode === 'disabled') {
             return $served;
         }
@@ -87,7 +92,7 @@ class Bridgeframe_API {
 
         header('Access-Control-Allow-Origin: ' . $origin);
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-        header('Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce');
+        header('Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce, X-BridgeFrame-Contract');
         header('Access-Control-Max-Age: 600');
         header('Vary: Origin', false);
 
@@ -110,6 +115,16 @@ class Bridgeframe_API {
     }
 
     private static function validate_token($request) {
+        if (strpos($request->get_route(), '/bridgeframe/v2/') === 0) {
+            $permission = Bridgeframe_V2::authorize($request);
+            if (is_wp_error($permission)) {
+                return new WP_REST_Response([
+                    'code' => $permission->get_error_code(),
+                    'error' => $permission->get_error_message(),
+                ], (int) $permission->get_error_data()['status']);
+            }
+            return true;
+        }
         $token = sanitize_text_field(self::get_scalar_param($request, 'token'));
 
         if ($token === '') {
@@ -680,7 +695,7 @@ class Bridgeframe_API {
         }
 
         if (!$type || !post_type_exists($type)) {
-            return new WP_REST_Response(['error' => 'Tipo de contenido inválido'], 400);
+            return new WP_REST_Response(['code' => 'invalid_content_type', 'error' => 'Tipo de contenido inválido'], 400);
         }
 
         if (!in_array($format, ['html', 'json'], true)) {
@@ -1000,11 +1015,11 @@ class Bridgeframe_API {
         $format = sanitize_key(self::get_scalar_param($request, 'format', 'html'));
 
         if (!$type || !post_type_exists($type)) {
-            return new WP_REST_Response(['error' => 'Tipo de contenido inválido'], 400);
+            return new WP_REST_Response(['code' => 'invalid_content_type', 'error' => 'Tipo de contenido inválido'], 400);
         }
 
         if ($taxonomy && !taxonomy_exists($taxonomy)) {
-            return new WP_REST_Response(['error' => 'Taxonomía inválida'], 400);
+            return new WP_REST_Response(['code' => 'invalid_taxonomy', 'error' => 'Taxonomía inválida'], 400);
         }
 
         if ($term && !$taxonomy) {
@@ -1150,7 +1165,7 @@ class Bridgeframe_API {
         $exclude_slugs = self::parse_csv(self::get_scalar_param($request, 'exclude'), 'sanitize_title');
 
         if (!$taxonomy || !taxonomy_exists($taxonomy)) {
-            return new WP_REST_Response(['error' => 'Taxonomía inválida'], 400);
+            return new WP_REST_Response(['code' => 'invalid_taxonomy', 'error' => 'Taxonomía inválida'], 400);
         }
 
         $allowed_orderby = ['name', 'slug', 'count', 'term_id', 'id', 'description', 'parent', 'none'];
@@ -1350,7 +1365,7 @@ class Bridgeframe_API {
         $type = sanitize_key(self::get_scalar_param($request, 'type'));
 
         if ($type && !post_type_exists($type)) {
-            return new WP_REST_Response(['error' => 'Tipo de contenido inválido'], 400);
+            return new WP_REST_Response(['code' => 'invalid_content_type', 'error' => 'Tipo de contenido inválido'], 400);
         }
 
         $cache_key = self::cache_key('schema', ['type' => $type]);

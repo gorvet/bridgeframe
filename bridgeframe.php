@@ -1,9 +1,9 @@
 <?php
 /**
  * Plugin Name: Bridgeframe
- * Plugin URI: https://www.botzy.app
+ * Plugin URI: https://github.com/gorvet/bridgeframe
  * Description: Convierte WordPress en un backend headless con salida HTML limpia, ideal para trabajar el front desde frameworks externos.
- * Version: 2.0.2
+ * Version: 2.1.0
  * Author: Juank de Gorvet
  * Author URI: https://api.whatsapp.com/send/?phone=5353779424
  * License: GPLv2 or later
@@ -11,7 +11,7 @@
  * Text Domain: bridgeframe
  * Domain Path: /languages
  * Requires at least: 5.5
- * Tested up to: 6.8.2
+ * Tested up to: 6.9.4
  * Requires PHP: 7.1
  * 
  * @package Bridgeframe
@@ -21,7 +21,7 @@
 
 defined('ABSPATH') || exit;
 
-define('BRIDGEFRAME_VERSION', '2.0.2');
+define('BRIDGEFRAME_VERSION', '2.1.0');
 define('BRIDGEFRAME_DIR', plugin_dir_path(__FILE__));
 define('BRIDGEFRAME_URL', plugin_dir_url(__FILE__));
 define('BRIDGEFRAME_SLUG', plugin_basename(__FILE__));
