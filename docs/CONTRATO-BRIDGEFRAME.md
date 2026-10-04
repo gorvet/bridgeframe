@@ -1,12 +1,12 @@
-# Contrato 2.0 de Bridgeframe y GFrame
+# Contrato 2.0 de Bridgeframe
 
-Implementado en Bridgeframe 2.1.0 el 4 de octubre de 2026. Contrastado con el cliente local `src/GFrame/Headless/WordPressClient.php` de `C:/xampp/htdocs/gframe-framework`. El framework no se modifica.
+Implementado en Bridgeframe 2.1.0 el 4 de octubre de 2026. Este documento define el contrato público del plugin para cualquier aplicación consumidora, independientemente de su lenguaje o framework. GFrame es uno de sus consumidores y se utiliza en las pruebas de integración.
 
 ## API v2
 
 Namespace: `/wp-json/bridgeframe/v2`. Endpoints de lectura: `GET /html`, `/list`, `/terms`, `/menu` y `/schema`. También se publican `GET /comments`, `POST /comments` y `POST /comments/{id}/moderate`.
 
-La autenticación se ejecuta en `permission_callback`, exclusivamente mediante `Authorization: Bearer`. La cabecera opcional `X-BridgeFrame-Contract` acepta solamente `2.0`; GFrame la envía en todas sus peticiones. Las respuestas incluyen `status`, `code`, `data`, `meta.contract_version=2.0` y `meta.request_id`. Los datos recuperados de caché reciben un identificador nuevo por solicitud.
+La autenticación se ejecuta en `permission_callback`, exclusivamente mediante `Authorization: Bearer`. La cabecera opcional `X-BridgeFrame-Contract` acepta solamente `2.0`. Las respuestas incluyen `status`, `code`, `data`, `meta.contract_version=2.0` y `meta.request_id`. Los datos recuperados de caché reciben un identificador nuevo por solicitud.
 
 ```json
 {
@@ -35,19 +35,31 @@ Las credenciales se almacenan mediante hash SHA-256 de tokens aleatorios de 256 
 | 429 | `rate_limited` |
 | 500 | `internal_error` |
 
-Los errores usan el mismo sobre y `data.message`. El cliente GFrame transforma estos códigos en sus códigos locales. El transporte de GFrame exige HTTPS y verifica certificado y host. El plugin conserva el soporte de WordPress para pruebas locales HTTP; la configuración de HTTPS corresponde al servidor.
+Los errores usan el mismo sobre y `data.message`. Cada consumidor debe comprobar el estado HTTP, `status`, `code` y la versión del contrato antes de procesar `data`. En producción, sirve la API mediante HTTPS y configura el cliente para verificar certificado y host. El plugin conserva el soporte de WordPress para pruebas locales HTTP; la configuración de HTTPS corresponde al servidor.
+
+## Consumo desde cualquier aplicación
+
+Crea una credencial con los scopes necesarios en `Ajustes > Bridgeframe` y envíala desde tu aplicación:
+
+```sh
+curl --header "Authorization: Bearer TU_TOKEN" \
+  --header "X-BridgeFrame-Contract: 2.0" \
+  "https://cms.example.com/wp-json/bridgeframe/v2/list?type=post&limit=10"
+```
+
+Lee los resultados de `data` y los metadatos de `meta`. La referencia de parámetros y endpoints está en [DOCUMENTACION.md](../DOCUMENTACION.md). No se necesita instalar GFrame para consumir Bridgeframe.
 
 ## Migración desde 2.0.2
 
-Al cargar el plugin, el token anterior se convierte a hash y se elimina la opción que lo almacenaba en claro. Ese mismo token se registra como consumidor «Migrado de v1», con `content.read` para v2 y sin caducidad, para permitir configurar GFrame sin perder la credencial existente. No obtiene permiso privado ni de comentarios en v2.
+Al cargar el plugin, el token anterior se convierte a hash y se elimina la opción que lo almacenaba en claro. Ese mismo token se registra como consumidor «Migrado de v1», con `content.read` para v2 y sin caducidad, para permitir migrar las aplicaciones sin perder la credencial existente. No obtiene permiso privado ni de comentarios en v2.
 
 Las rutas v1 se conservan para consumidores anteriores y mantienen sus permisos originales con el token migrado. Las credenciales nuevas de v2 no son aceptadas por v1, por lo que no permiten eludir los scopes. Revocar o rotar el consumidor migrado invalida también su acceso v1. Generar la credencial principal invalida tanto la principal anterior como la migrada.
 
 Para completar la transición de una aplicación:
 
 1. Crea un consumidor con caducidad y los scopes necesarios en `Ajustes > Bridgeframe`.
-2. Copia la credencial mostrada una sola vez a `WORDPRESS_HEADLESS_TOKEN`.
-3. Configura `WORDPRESS_HEADLESS_URL` con la URL HTTPS del sitio, sin añadir el namespace.
+2. Copia la credencial mostrada una sola vez a la configuración segura de tu aplicación.
+3. Configura el cliente HTTP con la URL HTTPS del sitio y el namespace `/wp-json/bridgeframe/v2`.
 4. Cambia los consumidores anteriores a v2 y revoca el consumidor migrado cuando ya no utilicen v1.
 
 ## Protección de consumo

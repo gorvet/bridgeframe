@@ -12,7 +12,7 @@ API headless para WordPress con contenido, ACF, taxonomías, menús, comentarios
 
 == Descripción ==
 
-Bridgeframe 2.1.0 implementa el contrato 2.0 de GFrame bajo /wp-json/bridgeframe/v2.
+Bridgeframe 2.1.0 implementa su contrato 2.0 bajo /wp-json/bridgeframe/v2. Cualquier aplicación puede consumirlo mediante HTTP; GFrame es uno de sus consumidores compatibles.
 
 - Lectura de contenido HTML/JSON, ACF, metadatos, taxonomías e imágenes.
 - Consulta de menús y esquema.
@@ -53,7 +53,7 @@ Rotar o revocar el consumidor migrado invalida también su acceso v1. Crea crede
 
 https://github.com/gorvet/bridgeframe
 
-Consulta README.md, DOCUMENTACION.md y docs/CONTRATO-GFRAME.md en el repositorio.
+Consulta README.md, DOCUMENTACION.md y docs/CONTRATO-BRIDGEFRAME.md en el repositorio.
 
 == Changelog ==
 

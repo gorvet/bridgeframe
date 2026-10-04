@@ -2,7 +2,7 @@
 
 ## 2.1.0 (4 de octubre de 2026)
 
-- API `bridgeframe/v2` compatible con el contrato 2.0 del cliente de GFrame.
+- API `bridgeframe/v2` con el contrato 2.0 de Bridgeframe, compatible con el cliente de GFrame.
 - Sobre uniforme para éxitos y errores, con versión e identificador de solicitud.
 - Autorización en `permission_callback` y autenticación Bearer sin token por URL.
 - Consumidores con hash, scopes, caducidad, rotación y revocación desde la administración.

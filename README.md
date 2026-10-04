@@ -2,7 +2,7 @@
 
 Bridgeframe convierte WordPress en una API headless para consumir contenido, taxonomías, menús y esquemas desde interfaces externas. Incluye creación, consulta y moderación de comentarios autenticadas.
 
-La versión **2.1.0** implementa el contrato **2.0** en `bridgeframe/v2`, compatible con `GFrame\Headless\WordPressClient` del [framework GFrame](https://github.com/gorvet/gframe-framework). Consulta [el contrato y la migración](docs/CONTRATO-GFRAME.md).
+La versión **2.1.0** implementa el contrato **2.0 de Bridgeframe** en `bridgeframe/v2`. Cualquier aplicación puede consumir la API siguiendo [su contrato y guía de migración](docs/CONTRATO-BRIDGEFRAME.md).
 
 ## Características
 
@@ -46,13 +46,15 @@ Disponibles:
 La guía completa está en:
 
 - [DOCUMENTACION.md](DOCUMENTACION.md)
-- [Contrato de GFrame y migración desde v1](docs/CONTRATO-GFRAME.md)
+- [Contrato de Bridgeframe y migración desde v1](docs/CONTRATO-BRIDGEFRAME.md)
 
 ## Acceso
 
 La API v2 exige `Authorization: Bearer`. Para lectura normal usa `content.read`; para incluir contenido privado añade `private.read`. Los comentarios requieren `comments.write` o `comments.moderate`. Usa HTTPS y conserva las credenciales en el backend. Se admiten 120 solicitudes por consumidor y minuto.
 
-## GFrame
+## Integración con GFrame
+
+El [framework GFrame](https://github.com/gorvet/gframe-framework) incluye `GFrame\Headless\WordPressClient`, un consumidor compatible con el contrato de Bridgeframe. Esta integración es opcional; la API también puede consumirse desde otros frameworks o clientes HTTP.
 
 ```dotenv
 WORDPRESS_HEADLESS_URL="https://cms.example.com"

@@ -1,6 +1,6 @@
 # Documentación de Bridgeframe
 
-Esta guía describe la API v2 del plugin 2.1.0, compatible con el contrato 2.0 del cliente de GFrame. Consulta [el contrato y la migración](docs/CONTRATO-GFRAME.md).
+Esta guía describe la API v2 del plugin 2.1.0 y el contrato 2.0 de Bridgeframe para cualquier aplicación consumidora. Consulta [el contrato y la migración](docs/CONTRATO-BRIDGEFRAME.md).
 
 ## Base de la API
 
