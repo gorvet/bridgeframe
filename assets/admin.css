@@ -1,0 +1,80 @@
+.bridgeframe-credentials {
+    max-width: 68rem;
+    margin-bottom: 1.5rem;
+}
+
+.bridgeframe-primary {
+    margin: 1rem 0 1.5rem;
+    padding: 1rem;
+    border: 1px solid #c3c4c7;
+    background: #fff;
+}
+
+.bridgeframe-primary h3 {
+    margin-top: 0;
+}
+
+.bridgeframe-primary .description {
+    margin-bottom: 0;
+}
+
+.bridgeframe-credential-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bridgeframe-token {
+    overflow-wrap: anywhere;
+}
+
+.bridgeframe-primary .bridgeframe-token:not([hidden]) {
+    display: inline-block;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-top: 0.75rem;
+}
+
+.bridgeframe-create-credential {
+    margin: 0.75rem 0 1rem;
+}
+
+.bridgeframe-create-credential summary {
+    width: fit-content;
+    padding: 0.4rem 0;
+    cursor: pointer;
+    color: var(--wp-admin-theme-color, #2271b1);
+    font-weight: 600;
+}
+
+.bridgeframe-create-credential form {
+    max-width: 32rem;
+    padding: 0.25rem 1rem 1rem;
+    border-left: 2px solid #c3c4c7;
+}
+
+.bridgeframe-create-credential .regular-text {
+    max-width: 100%;
+}
+
+.bridgeframe-create-credential fieldset label {
+    display: block;
+    margin-top: 0.5rem;
+}
+
+.bridgeframe-credential-table {
+    overflow-x: auto;
+}
+
+.bridgeframe-credential-table table {
+    min-width: 38rem;
+}
+
+.bridgeframe-credential-table thead th {
+    white-space: nowrap;
+}
+
+.bridgeframe-credential-table :is(th, td) {
+    overflow-wrap: anywhere;
+}

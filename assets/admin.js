@@ -33,6 +33,7 @@
         tokenButton.addEventListener('click', function () {
             const tokenEl = document.getElementById('bridgeframe-token');
             const statusEl = document.getElementById('token-status');
+            const credentialRows = document.getElementById('bridgeframe-credential-rows');
 
             tokenButton.disabled = true;
             setText(statusEl, messages.generating || 'Generando...');
@@ -41,6 +42,10 @@
                 .then(function (data) {
                     if (data.success && data.data && data.data.token) {
                         setText(tokenEl, data.data.token);
+                        tokenEl.hidden = false;
+                        if (credentialRows && typeof data.data.credentialRows === 'string') {
+                            credentialRows.innerHTML = data.data.credentialRows;
+                        }
                         setText(statusEl, messages.generated || 'Generado');
                         return;
                     }

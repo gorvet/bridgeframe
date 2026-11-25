@@ -2,6 +2,12 @@
 defined('ABSPATH') || exit;
 
 class Bridgeframe_Settings {
+    private const SCOPE_LABELS = [
+        'content.read'      => 'Leer contenido público',
+        'private.read'      => 'Incluir contenido privado',
+        'comments.write'    => 'Crear comentarios',
+        'comments.moderate' => 'Consultar y moderar comentarios',
+    ];
 
     public static function init() {
         add_action('admin_menu', [__CLASS__, 'add_menu']);
@@ -109,6 +115,7 @@ class Bridgeframe_Settings {
             return;
         }
 
+        wp_enqueue_style('bridgeframe-admin', BRIDGEFRAME_URL . 'assets/admin.css', [], BRIDGEFRAME_VERSION);
         wp_enqueue_script(
             'bridgeframe-admin',
             BRIDGEFRAME_URL . 'assets/admin.js',
@@ -124,7 +131,7 @@ class Bridgeframe_Settings {
             'clearCacheAction' => 'bridgeframe_clear_cache',
             'messages'         => [
                 'generating' => 'Generando...',
-                'generated'  => 'Generado',
+                'generated'  => 'Token generado. Cópialo ahora.',
                 'clearing'   => 'Limpiando...',
                 'cleared'    => 'Caché limpio',
                 'error'      => 'Error',
@@ -140,7 +147,9 @@ class Bridgeframe_Settings {
         }
 
         $new_token = Bridgeframe_Auth::generate_token();
-        wp_send_json_success(['token' => $new_token]);
+        ob_start();
+        self::render_credential_rows();
+        wp_send_json_success(['token' => $new_token, 'credentialRows' => ob_get_clean()]);
     }
 
     public static function ajax_clear_cache() {
@@ -154,12 +163,54 @@ class Bridgeframe_Settings {
         wp_send_json_success(['message' => 'Caché limpio']);
     }
 
+    private static function render_credential_rows() {
+        $consumers = Bridgeframe_Auth::consumers();
+        if (!$consumers) {
+            echo '<tr><td colspan="5">Todavía no hay credenciales registradas.</td></tr>';
+            return;
+        }
+
+        foreach ($consumers as $consumer) {
+            $permissions = array_map(static function ($scope) {
+                return self::SCOPE_LABELS[$scope] ?? $scope;
+            }, $consumer['scopes']);
+            $expiry = $consumer['expires_at'];
+            $status = 'Activa';
+            if ($consumer['revoked']) {
+                $status = 'Revocada';
+            } elseif ($expiry && $expiry <= time()) {
+                $status = 'Caducada';
+            }
+            ?>
+            <tr>
+                <th scope="row"><?php echo esc_html($consumer['name']); ?></th>
+                <td><?php echo esc_html($permissions ? implode(', ', $permissions) : 'Sin permisos'); ?></td>
+                <td>
+                    <?php echo esc_html($expiry ? wp_date('d/m/Y H:i', $expiry) : ($consumer['id'] === 'legacy' ? 'Sin caducidad (migración de v1)' : 'Sin caducidad')); ?>
+                </td>
+                <td><?php echo esc_html($status); ?></td>
+                <td>
+                    <?php if (!$consumer['revoked']): ?>
+                        <form method="post" class="bridgeframe-credential-actions">
+                            <?php wp_nonce_field('bridgeframe_consumers', '_wpnonce', false); ?>
+                            <input type="hidden" name="consumer_id" value="<?php echo esc_attr($consumer['id']); ?>">
+                            <button class="button" name="bridgeframe_consumer_action" value="rotate" aria-label="<?php echo esc_attr('Reemplazar token de ' . $consumer['name']); ?>">Reemplazar token</button>
+                            <button class="button" name="bridgeframe_consumer_action" value="revoke" aria-label="<?php echo esc_attr('Revocar token de ' . $consumer['name']); ?>">Revocar</button>
+                        </form>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <?php
+        }
+    }
+
     public static function render_page() {
         if (!current_user_can('manage_options')) {
             return;
         }
 
         $issued = false;
+        $creation_failed = false;
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['bridgeframe_consumer_action'])) {
             check_admin_referer('bridgeframe_consumers');
             $action = sanitize_key(wp_unslash($_POST['bridgeframe_consumer_action']));
@@ -168,7 +219,10 @@ class Bridgeframe_Settings {
                 $name = sanitize_text_field(wp_unslash($_POST['consumer_name'] ?? ''));
                 $scopes = isset($_POST['scopes']) && is_array($_POST['scopes']) ? array_map('sanitize_key', wp_unslash($_POST['scopes'])) : [];
                 $days = min(3650, max(1, absint($_POST['expires_days'] ?? 365)));
-                if ($name !== '' && $scopes) $issued = Bridgeframe_Auth::create_consumer($name, $scopes, time() + $days * DAY_IN_SECONDS);
+                if ($name !== '' && $scopes) {
+                    $issued = Bridgeframe_Auth::create_consumer($name, $scopes, time() + $days * DAY_IN_SECONDS);
+                }
+                $creation_failed = !$issued;
             } elseif ($action === 'rotate') {
                 $issued = Bridgeframe_Auth::rotate_consumer($id);
             } elseif ($action === 'revoke') {
@@ -176,7 +230,6 @@ class Bridgeframe_Settings {
             }
         }
 
-        $token = Bridgeframe_Auth::get_token();
         $headless = (bool) get_option('bridgeframe_headless_mode', false);
         $redirect_url = get_option('bridgeframe_redirect_url', '');
         $cache_enabled = Bridgeframe_Utils::is_cache_enabled();
@@ -187,54 +240,58 @@ class Bridgeframe_Settings {
         <div class="wrap">
             <h1><strong>Bridgeframe</strong></h1>
 
-            <h2>Consumidores de la API v2</h2>
-            <p>Envía la credencial mediante Authorization: Bearer. Cada credencial tiene permisos independientes y se muestra solo al crearla o rotarla.</p>
-            <?php if ($issued): ?>
-                <div class="notice notice-success inline"><p>Copia ahora la credencial: <code><?php echo esc_html($issued['token']); ?></code></p></div>
-            <?php endif; ?>
-            <form method="post">
-                <?php wp_nonce_field('bridgeframe_consumers'); ?>
-                <input type="hidden" name="bridgeframe_consumer_action" value="create">
-                <p><label for="consumer-name">Nombre del consumidor</label><br><input id="consumer-name" name="consumer_name" class="regular-text" required maxlength="100"></p>
-                <fieldset><legend>Permisos</legend>
-                    <?php foreach (['content.read' => 'Leer contenido público', 'private.read' => 'Incluir contenido privado', 'comments.write' => 'Crear comentarios', 'comments.moderate' => 'Consultar y moderar comentarios'] as $scope => $label): ?>
-                        <p><label><input type="checkbox" name="scopes[]" value="<?php echo esc_attr($scope); ?>" <?php checked($scope, 'content.read'); ?>> <?php echo esc_html($label); ?></label></p>
-                    <?php endforeach; ?>
-                </fieldset>
-                <p><label for="expires-days">Caducidad en días</label> <input id="expires-days" type="number" name="expires_days" min="1" max="3650" value="365" required></p>
-                <?php submit_button('Crear credencial', 'secondary'); ?>
-            </form>
-            <table class="widefat striped">
-                <thead><tr><th>Consumidor</th><th>Permisos</th><th>Caducidad</th><th>Estado</th><th>Acciones</th></tr></thead>
-                <tbody>
-                <?php foreach (Bridgeframe_Auth::consumers() as $consumer): ?>
-                    <tr>
-                        <td><?php echo esc_html($consumer['name']); ?></td>
-                        <td><?php echo esc_html(implode(', ', $consumer['scopes'])); ?></td>
-                        <td><?php echo esc_html($consumer['expires_at'] ? wp_date('Y-m-d H:i', $consumer['expires_at']) : 'Sin caducidad (migración)'); ?></td>
-                        <td><?php echo esc_html($consumer['revoked'] ? 'Revocada' : ($consumer['expires_at'] && $consumer['expires_at'] <= time() ? 'Caducada' : 'Activa')); ?></td>
-                        <td><?php if (!$consumer['revoked']): ?><form method="post">
-                            <?php wp_nonce_field('bridgeframe_consumers'); ?>
-                            <input type="hidden" name="consumer_id" value="<?php echo esc_attr($consumer['id']); ?>">
-                            <button class="button" name="bridgeframe_consumer_action" value="rotate">Rotar</button>
-                            <button class="button" name="bridgeframe_consumer_action" value="revoke">Revocar</button>
-                        </form><?php endif; ?></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
+            <section class="bridgeframe-credentials" aria-labelledby="bridgeframe-credentials-heading">
+                <h2 id="bridgeframe-credentials-heading">Credenciales de la API</h2>
+                <p>Envía el token en la cabecera <code>Authorization: Bearer &lt;token&gt;</code>. Cópialo al generarlo. Después queda oculto.</p>
 
-            <table class="form-table">
-                <tr>
-                    <th scope="row">Credencial principal v2</th>
-                    <td>
-                        <code id="bridgeframe-token" style="font-size:16px; padding: 5px; margin-right: 5px; display: inline-block;"><?php echo esc_html($token); ?></code>
-                        <button type="button" class="button" id="regenerate-token-btn">Regenerar token</button>
-                        <span id="token-status" style="margin-left:10px;"></span>
-                        <p class="description">Genera una credencial con content.read y caducidad de un año. Se invalidan la principal anterior y el token migrado de v1.</p>
-                    </td>
-                </tr>
-            </table>
+                <?php if ($issued): ?>
+                    <div class="notice notice-success inline">
+                        <p>Copia ahora el token <code class="bridgeframe-token"><?php echo esc_html($issued['token']); ?></code></p>
+                    </div>
+                <?php endif; ?>
+
+                <div class="bridgeframe-primary">
+                    <h3>Credencial principal</h3>
+                    <p>Da acceso de solo lectura al contenido público y vence al cabo de un año.</p>
+                    <div class="bridgeframe-credential-actions">
+                        <button type="button" class="button" id="regenerate-token-btn" aria-describedby="bridgeframe-regenerate-note">Regenerar token principal</button>
+                        <span id="token-status" role="status"></span>
+                    </div>
+                    <code id="bridgeframe-token" class="bridgeframe-token" hidden></code>
+                    <p class="description" id="bridgeframe-regenerate-note">Al regenerarlo, se invalidan el token principal anterior y el token migrado de v1.</p>
+                </div>
+
+                <h3 id="bridgeframe-registered-heading">Credenciales registradas</h3>
+                <p>Crea una credencial por integración cuando necesites darle permisos o caducidad propios.</p>
+                <details class="bridgeframe-create-credential"<?php if ($creation_failed) echo ' open'; ?>>
+                    <summary>Crear credencial</summary>
+                    <form method="post">
+                        <?php wp_nonce_field('bridgeframe_consumers'); ?>
+                        <input type="hidden" name="bridgeframe_consumer_action" value="create">
+                        <?php if ($creation_failed): ?>
+                            <div class="notice notice-error inline"><p>Indica un nombre y selecciona al menos un permiso.</p></div>
+                        <?php endif; ?>
+                        <p><label for="consumer-name">Nombre de la integración</label><br><input id="consumer-name" name="consumer_name" class="regular-text" required maxlength="100"></p>
+                        <fieldset>
+                            <legend>Permisos</legend>
+                            <?php foreach (self::SCOPE_LABELS as $scope => $label): ?>
+                                <label><input type="checkbox" name="scopes[]" value="<?php echo esc_attr($scope); ?>" <?php checked($scope, 'content.read'); ?>> <?php echo esc_html($label); ?></label>
+                            <?php endforeach; ?>
+                        </fieldset>
+                        <p><label for="expires-days">Caducidad en días</label> <input id="expires-days" type="number" name="expires_days" min="1" max="3650" value="365" required></p>
+                        <?php submit_button('Generar token', 'primary', 'submit', false); ?>
+                    </form>
+                </details>
+
+                <div class="bridgeframe-credential-table" role="region" aria-labelledby="bridgeframe-registered-heading" tabindex="0">
+                    <table class="widefat striped" aria-labelledby="bridgeframe-registered-heading">
+                        <thead><tr><th scope="col">Nombre</th><th scope="col">Permisos</th><th scope="col">Caducidad</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
+                        <tbody id="bridgeframe-credential-rows">
+                            <?php self::render_credential_rows(); ?>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
             <hr>
 
